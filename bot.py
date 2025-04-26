@@ -8,8 +8,8 @@ import datetime
 BOT_TOKEN = "7769240179:AAHPT10IML3CezoYu71h3sbYmaXsxL9MMPU"
 
 # При старте загрузим справочники
-projects_list = get_projects()
-categories_list = get_categories()
+projects_list = load_projects()
+categories_list = load_categories()
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
