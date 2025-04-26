@@ -5,7 +5,7 @@ from aspro_api import create_expense
 from aspro_reference import get_projects, get_categories, find_project_id, find_category_id
 import datetime
 
-BOT_TOKEN = "ТВОЙ_BOT_TOKEN"
+BOT_TOKEN = "7769240179:AAHPT10IML3CezoYu71h3sbYmaXsxL9MMPU"
 
 # При старте загрузим справочники
 projects_list = get_projects()
