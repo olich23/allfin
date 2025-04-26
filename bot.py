@@ -2,9 +2,14 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 from nlp import parse_finance_message
 from aspro_api import create_expense
+from aspro_reference import get_projects, get_categories, find_project_id, find_category_id
 import datetime
 
-BOT_TOKEN = "7769240179:AAHPT10IML3CezoYu71h3sbYmaXsxL9MMPU"
+BOT_TOKEN = "ТВОЙ_BOT_TOKEN"
+
+# При старте загрузим справочники
+projects_list = get_projects()
+categories_list = get_categories()
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
@@ -16,8 +21,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     name = parsed_data["name"]
     total = parsed_data["total"]
-    project_id = parsed_data["project_id"]
-    category_id = parsed_data["category_id"]
+    
+    # Находим project_id и category_id по названию
+    project_id = find_project_id(projects_list, parsed_data["project_name"])
+    if not project_id:
+        await update.message.reply_text(f"Проект '{parsed_data['project_name']}' не найден в системе.")
+        return
+
+    category_id = find_category_id(categories_list, parsed_data["category_name"])
+    if not category_id:
+        await update.message.reply_text(f"Статья расходов '{parsed_data['category_name']}' не найдена в системе.")
+        return
+
     org_account_id = parsed_data["org_account_id"]
     currency_id = parsed_data["currency_id"]
     
