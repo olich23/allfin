@@ -1,6 +1,6 @@
 import aiohttp
 
-OPENROUTER_API_KEY = "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"
+OPENROUTER_API_KEY = "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"
 
 async def parse_finance_message(text):
     prompt = f"""
