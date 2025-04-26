@@ -7,7 +7,7 @@ HEADERS = {"Content-Type": "application/x-www-form-urlencoded"}
 
 def get_projects():
     """Получить список проектов из Pirus Aspro Cloud"""
-    url = BASE_URL + "project/project/list"
+    url = BASE_URL + "st/projects/list"
     payload = {
         "api_key": API_KEY,
         "page": 0,      # Страница результатов
