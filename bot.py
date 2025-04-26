@@ -19,10 +19,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(parsed_data["error"])
         return
 
-    name = parsed_data["name"]
+    # Собираем название расхода из категории и проекта
+    name = f"{parsed_data['category_name']} для {parsed_data['project_name']}"
     total = parsed_data["total"]
-    
-    # Находим project_id и category_id по названию
+
+    # Поиск project_id и category_id через справочники
     project_id = find_project_id(projects_list, parsed_data["project_name"])
     if not project_id:
         await update.message.reply_text(f"Проект '{parsed_data['project_name']}' не найден в системе.")
@@ -33,11 +34,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"Статья расходов '{parsed_data['category_name']}' не найдена в системе.")
         return
 
-    org_account_id = parsed_data["org_account_id"]
-    currency_id = parsed_data["currency_id"]
-    
+    org_account_id = 20  # фиксируем на старте, потом можно будет брать динамически
+    currency_id = 99     # фиксируем на старте, потом можно будет брать динамически
+
     plan_paid_date = parsed_data.get("plan_paid_date", datetime.date.today().strftime("%Y-%m-%d"))
-    accrual_month = parsed_data.get("accrual_month", datetime.date.today().strftime("%Y-%m"))
+    accrual_month = datetime.date.today().strftime("%Y-%m")  # по умолчанию текущий месяц
 
     result = create_expense(
         name=name,
