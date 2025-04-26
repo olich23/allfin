@@ -5,30 +5,30 @@ OPENROUTER_API_KEY = "sk-or-v1-57e0a143f7c718df3e5ec0a23509a00e82e6510480e290815
 
 async def parse_finance_message(text):
     prompt = f"""
-    Ты — ассистент по финансовому учету digital-агентства.
-    Из текста пользователя извлеки:
-    
-    - total: сумма (число)
-    - project_name: название проекта
-    - category_name: название статьи расходов
-    - plan_paid_date: дата оплаты (формат YYYY-MM-DD, если указана)
-    
-    Ответ должен быть ТОЛЬКО в формате ЧИСТОГО JSON.
-    НЕ добавляй никаких комментариев, пояснений или текстов вокруг JSON.
-    
-    Пример правильного ответа:
-    {{
-        "total": 15000,
-        "project_name": "SEO Петрова",
-        "category_name": "реклама",
-        "plan_paid_date": "2025-05-10"
-    }}
-    
-    Текст пользователя: \"{text}\"
-    """
+Ты — ассистент по финансовому учету digital-агентства.
 
+Твоя задача:
+Из текста пользователя извлеки ТОЛЬКО следующие поля:
+- total (сумма, целое число без знаков валют)
+- project_name (название проекта, строка)
+- category_name (название статьи расходов, строка)
+- plan_paid_date (дата оплаты в формате YYYY-MM-DD, или null, если дата не указана)
 
+Правила:
+- Ответ ДОЛЖЕН быть только чистым JSON без комментариев.
+- Нельзя вставлять никакой PHP-код, объяснения или дополнительный текст.
+- Если дата не указана пользователем — ставь null.
 
+Пример правильного ответа:
+{{
+    "total": 15000,
+    "project_name": "SEO Петрова",
+    "category_name": "реклама",
+    "plan_paid_date": null
+}}
+
+Текст пользователя: \"{text}\"
+"""
 
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -38,7 +38,7 @@ async def parse_finance_message(text):
     }
 
     body = {
-        "model": "mistralai/mistral-7b-instruct",  # Небольшая модель, дешёвая для тестов
+        "model": "mistralai/mistral-7b-instruct",
         "messages": [
             {"role": "user", "content": prompt}
         ]
@@ -58,3 +58,4 @@ async def parse_finance_message(text):
                 return parsed
             except Exception as e:
                 return {"error": f"Ошибка разбора ответа: {e}, ответ: {data}"}
+
