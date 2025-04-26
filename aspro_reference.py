@@ -6,18 +6,24 @@ BASE_URL = "https://pirus.aspro.cloud/api/v1/module/"
 HEADERS = {"Content-Type": "application/x-www-form-urlencoded"}
 
 def get_projects():
-    """Получить список проектов из Aspro Cloud"""
-    url = f"https://pirus.aspro.cloud/api/v1/st/projects/list?api_key={API_KEY}"
+    """Получить список проектов в Pirus Aspro Cloud"""
+    url = BASE_URL + "project/project/list"
+    payload = {
+        "api_key": API_KEY,
+        "page": 0,     # Обязательно
+        "count": 100   # Сколько записей вернуть за раз
+    }
     try:
-        response = requests.get(url, headers={"Content-Type": "application/json"})
+        response = requests.post(url, headers=HEADERS, data=payload)
         print("Ответ сервера по проектам:", response.text)
         response.raise_for_status()
         result = response.json()
-        projects = result.get("response", {}).get("items", [])
+        projects = result.get("response", [])
         return [{"id": proj["id"], "name": proj["name"]} for proj in projects]
     except Exception as e:
         print(f"Ошибка при получении проектов: {e}")
         return []
+
 
 
 def get_categories():
