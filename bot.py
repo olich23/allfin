@@ -6,7 +6,7 @@ from aspro_reference import load_projects, load_categories, find_project_id, fin
 from rapidfuzz import process
 import datetime
 
-BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"
+BOT_TOKEN = "7769240179:AAHPT10IML3CezoYu71h3sbYmaXsxL9MMPU"
 
 async def load_references():
     projects = await load_projects()
