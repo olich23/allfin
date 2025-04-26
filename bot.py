@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 from nlp import parse_finance_message
 from aspro_api import create_expense
-from aspro_reference import get_projects, get_categories, find_project_id, find_category_id
+from aspro_reference import load_projects, load_categories, find_project_id, find_category_id
 import datetime
 
 BOT_TOKEN = "7769240179:AAHPT10IML3CezoYu71h3sbYmaXsxL9MMPU"
