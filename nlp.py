@@ -25,7 +25,7 @@ async def parse_finance_message(text):
     }
 
     body = {
-        "model": "openrouter/mistral-7b",  # легкая и быстрая модель, можно поменять
+        "model": "openrouter/mistral-7b-instruct",  # легкая и быстрая модель, можно поменять
         "messages": [
             {"role": "user", "content": prompt}
         ]
