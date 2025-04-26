@@ -4,7 +4,7 @@ import json
 OPENROUTER_API_KEY = "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"
 
 async def parse_finance_message(text):
-    prompt = f"""
+   prompt = f"""
 Ты — ассистент по финансовому учету digital-агентства.
 Из текста пользователя извлеки:
 
@@ -13,17 +13,18 @@ async def parse_finance_message(text):
 - category_name: название статьи расходов
 - plan_paid_date: дата оплаты (формат YYYY-MM-DD, если указана)
 
-Ответ строго в формате JSON, например:
+Ответ должен быть ТОЛЬКО в формате ЧИСТОГО JSON.
+НЕ добавляй никаких комментариев, пояснений или текстов вокруг JSON.
+
+Пример правильного ответа:
 {{
     "total": 15000,
     "project_name": "SEO Петрова",
     "category_name": "реклама",
     "plan_paid_date": "2025-05-10"
 }}
-Если какие-то данные отсутствуют, оставляй их пустыми или null.
 
 Текст пользователя: \"{text}\"
-"""
 
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
