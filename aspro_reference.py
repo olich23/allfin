@@ -1,68 +1,61 @@
 import requests
 
 API_KEY = "WFhISk9wZVBPamVmd3U2TTVaR0ZLQW9uTk90WWJIeTdfMTAxNTc3"
-BASE_URL = "https://pirus.aspro.cloud/api/v1/module/"
+BASE_URL = "https://pirus.aspro.cloud/api/v1/module/st"
 
-HEADERS = {"Content-Type": "application/x-www-form-urlencoded"}
+projects_list = []
+categories_list = []
 
-def get_projects():
-    """Получить список проектов из Pirus Aspro Cloud"""
-    url = BASE_URL + "st/projects/list"
-    payload = {
-        "api_key": API_KEY,
-        "page": 0,      # Страница результатов
-        "count": 100    # Количество проектов за раз
-    }
-    try:
-        response = requests.post(url, headers=HEADERS, data=payload)
-        print("Ответ сервера по проектам:", response.text)  # Печать ответа для отладки
-        response.raise_for_status()
-        result = response.json()
-        projects = result.get("response", [])
-        return [{"id": proj["id"], "name": proj["name"]} for proj in projects]
-    except Exception as e:
-        print(f"Ошибка при получении проектов: {e}")
-        return []
+# Функция для загрузки проектов из Aspro
+async def load_projects():
+    global projects_list
+    url = f"{BASE_URL}/projects/list?api_key={API_KEY}"
+    response = requests.get(url)
+    print(f"Ответ сервера по проектам: {response.text}")
+    if response.status_code == 200:
+        try:
+            data = response.json()
+            projects_list = data.get("response", {}).get("items", [])
+            print(f"Загруженные проекты: {', '.join([p['name'] for p in projects_list])}")
+        except Exception as e:
+            print(f"Ошибка при обработке данных о проектах: {e}")
+    else:
+        print(f"Ошибка при получении проектов: {response.status_code} {response.text}")
 
-def get_categories():
-    """Получить список категорий расходов из Pirus Aspro Cloud"""
-    url = BASE_URL + "fin/category/list"
-    payload = {
-        "api_key": API_KEY,
-        "page": 0,      # Добавим тоже
-        "count": 100
-    }
-    try:
-        response = requests.post(url, headers=HEADERS, data=payload)
-        print("Ответ сервера по категориям:", response.text)
-        response.raise_for_status()
-        result = response.json()
-        categories = result.get("response", [])
-        return [{"id": cat["id"], "name": cat["name"]} for cat in categories]
-    except Exception as e:
-        print(f"Ошибка при получении категорий: {e}")
-        return []
-
-def normalize_name(name):
-    """Приводит название к единому виду: убирает пробелы и приводит к нижнему регистру"""
-    return name.replace(" ", "").lower() if name else ""
-
-def find_project_id(projects_list, name_to_find):
-    """Ищет project_id по нормализованному названию проекта"""
-    if not name_to_find:
+# Функция поиска project_id по названию проекта
+async def find_project_id(projects, project_name):
+    if not project_name:
         return None
-    normalized_name_to_find = normalize_name(name_to_find)
-    for project in projects_list:
-        if normalized_name_to_find in normalize_name(project["name"]):
-            return project["id"]
+    project_name = project_name.lower().strip()
+    for project in projects:
+        name_in_list = project.get("name", "").lower().strip()
+        if project_name in name_in_list or name_in_list in project_name:
+            return project.get("id")
     return None
 
-def find_category_id(categories_list, name_to_find):
-    """Ищет category_id по нормализованному названию статьи расходов"""
-    if not name_to_find:
+# Функция загрузки категорий расходов
+async def load_categories():
+    global categories_list
+    url = f"{BASE_URL}/outcome_categories/list?api_key={API_KEY}"
+    response = requests.get(url)
+    print(f"Ответ сервера по категориям: {response.text}")
+    if response.status_code == 200:
+        try:
+            data = response.json()
+            categories_list = data.get("response", {}).get("items", [])
+            print(f"Загруженные категории: {', '.join([c['name'] for c in categories_list])}")
+        except Exception as e:
+            print(f"Ошибка при обработке данных о категориях: {e}")
+    else:
+        print(f"Ошибка при получении категорий: {response.status_code} {response.text}")
+
+# Функция поиска category_id по названию категории
+async def find_category_id(categories, category_name):
+    if not category_name:
         return None
-    normalized_name_to_find = normalize_name(name_to_find)
-    for category in categories_list:
-        if normalized_name_to_find in normalize_name(category["name"]):
-            return category["id"]
+    category_name = category_name.lower().strip()
+    for category in categories:
+        name_in_list = category.get("name", "").lower().strip()
+        if category_name in name_in_list or name_in_list in category_name:
+            return category.get("id")
     return None
