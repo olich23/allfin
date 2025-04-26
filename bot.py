@@ -57,5 +57,9 @@ if __name__ == "__main__":
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    print("Загруженные проекты:")
+    for p in projects_list:
+        print(f"- {p['id']}: {p['name']}")
+
 
     app.run_polling()
