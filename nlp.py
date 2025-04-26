@@ -4,7 +4,7 @@ import json
 OPENROUTER_API_KEY = "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"
 
 async def parse_finance_message(text):
-   prompt = f"""
+prompt = f"""
 Ты — ассистент по финансовому учету digital-агентства.
 Из текста пользователя извлеки:
 
@@ -25,6 +25,8 @@ async def parse_finance_message(text):
 }}
 
 Текст пользователя: \"{text}\"
+"""
+
 
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
