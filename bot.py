@@ -11,6 +11,8 @@ BOT_TOKEN = "7769240179:AAHPT10IML3CezoYu71h3sbYmaXsxL9MMPU"
 async def load_references():
     projects = await load_projects()
     categories = await load_categories()
+    print("DEBUG: Projects loaded:", projects)
+    print("DEBUG: Categories loaded:", categories)
     return projects, categories
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
