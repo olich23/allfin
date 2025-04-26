@@ -6,16 +6,16 @@ BASE_URL = "https://pirus.aspro.cloud/api/v1/module/"
 HEADERS = {"Content-Type": "application/x-www-form-urlencoded"}
 
 def get_projects():
-    """Получить список проектов в Pirus Aspro Cloud"""
+    """Получить список проектов из Pirus Aspro Cloud"""
     url = BASE_URL + "project/project/list"
     payload = {
         "api_key": API_KEY,
-        "page": 0,     # Обязательно
-        "count": 100   # Сколько записей вернуть за раз
+        "page": 0,      # Страница результатов
+        "count": 100    # Количество проектов за раз
     }
     try:
         response = requests.post(url, headers=HEADERS, data=payload)
-        print("Ответ сервера по проектам:", response.text)
+        print("Ответ сервера по проектам:", response.text)  # Печать ответа для отладки
         response.raise_for_status()
         result = response.json()
         projects = result.get("response", [])
@@ -24,16 +24,17 @@ def get_projects():
         print(f"Ошибка при получении проектов: {e}")
         return []
 
-
-
 def get_categories():
-    """Получить список категорий расходов из Aspro Cloud"""
+    """Получить список категорий расходов из Pirus Aspro Cloud"""
     url = BASE_URL + "fin/category/list"
     payload = {
         "api_key": API_KEY,
+        "page": 0,      # Добавим тоже
+        "count": 100
     }
     try:
         response = requests.post(url, headers=HEADERS, data=payload)
+        print("Ответ сервера по категориям:", response.text)
         response.raise_for_status()
         result = response.json()
         categories = result.get("response", [])
@@ -43,7 +44,7 @@ def get_categories():
         return []
 
 def normalize_name(name):
-    """Приводит название к единому виду: убирает пробелы, приводит к нижнему регистру"""
+    """Приводит название к единому виду: убирает пробелы и приводит к нижнему регистру"""
     return name.replace(" ", "").lower() if name else ""
 
 def find_project_id(projects_list, name_to_find):
@@ -65,4 +66,3 @@ def find_category_id(categories_list, name_to_find):
         if normalized_name_to_find in normalize_name(category["name"]):
             return category["id"]
     return None
-
