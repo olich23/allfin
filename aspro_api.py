@@ -1,76 +1,84 @@
+# aspro_api.py
+from __future__ import annotations
+
 import requests
+from datetime import datetime
+from typing import Any, Tuple
 
-API_KEY   = "WFhISk9wZVBPamVmd3U2TTVaR0ZLQW9uTk90WWJIeTdfMTAxNTc3"
-# один и тот же endpoint для расходов и доходов
-BASE_URL  = "https://pirus.aspro.cloud/api/v1/module/fin/plan_money/create"
-HEADERS   = {"Content-Type": "application/x-www-form-urlencoded"}
+# --- конфигурация -----------------------------------------------------------
+API_KEY     = "WFhISk9wZVBPamVmd3U2TTVaR0ZLQW9uTk90WWJIeTdfMTAxNTc3"
+BASE_URL    = "https://pirus.aspro.cloud/api/v1/module/fin/plan_money/create"
+HEADERS     = {"Content-Type": "application/x-www-form-urlencoded"}
+MANAGER_ID  = 304332
+# -----------------------------------------------------------------------------
 
-# кто «создаёт» запись в Aspro.Cloud
-MANAGER_ID = 304332
 
+def _create_plan_money(
+    *,
+    name: str,
+    total: float | int,
+    type_code: int,               # 10 — доход, 20 — расход
+    category_id: int,
+    project_id: int,
+    plan_paid_date: str,
+    accrual_month: str,
+    org_account_id: int,
+    currency_id: int,
+    api_key: str = API_KEY,
+    manager_id: int = MANAGER_ID,
+    base_url: str = BASE_URL,
+) -> Tuple[bool, Any]:
+    """
+    Базовая функция создания записи «План денег».
+    Возвращает (ok, data) - где ok — bool успеха, data — json|str ответа.
+    """
 
-def _post_plan_money(payload: dict):
-    """Вспомогательная обёртка: POST и попытка .json()"""
-    response = requests.post(BASE_URL, headers=HEADERS, data=payload)
+    # --- валидация простейших параметров ------------------------------------
     try:
-        return response.json()
-    except Exception:
-        return response.text
+        _ = float(total)
+    except (TypeError, ValueError):
+        raise ValueError("«total» должен быть числом")
 
+    # проверки форматов дат (YYYY-MM-DD / YYYY-MM)
+    for val, fmt in ((plan_paid_date, "%Y-%m-%d"), (accrual_month, "%Y-%m")):
+        try:
+            datetime.strptime(val, fmt)
+        except ValueError:
+            raise ValueError(f"Неверный формат даты: {val} (ожидался {fmt})")
+    # ------------------------------------------------------------------------
 
-def create_expense(
-    name: str,
-    total: float,
-    project_id: int,
-    category_id: int,
-    plan_paid_date: str,
-    accrual_month: str,
-    org_account_id: int,
-    currency_id: int,
-):
-    """
-    Создать *расход* (type = 20) в «План денег».
-    """
     payload = {
-        "api_key":       API_KEY,
-        "name":          name,
+        "api_key":        api_key,
+        "name":           name,
         "plan_paid_date": plan_paid_date,
         "accrual_month":  accrual_month,
-        "category_id":    category_id,   # статья расходов
+        "category_id":    category_id,
         "total":          total,
         "org_account_id": org_account_id,
         "project_id":     project_id,
         "currency_id":    currency_id,
-        "manager_id":     MANAGER_ID,
-        "type":           20,            # 20 = расход
+        "manager_id":     manager_id,
+        "type":           type_code,
     }
-    return _post_plan_money(payload)
+
+    resp = requests.post(base_url, headers=HEADERS, data=payload)
+    try:
+        data = resp.json()
+    except Exception:            # not json → вернём сырой текст
+        data = resp.text
+
+    ok = resp.ok and isinstance(data, dict) and "error" not in data
+    return ok, data
 
 
-def create_income(
-    name: str,
-    total: float,
-    project_id: int,
-    category_id: int,
-    plan_paid_date: str,
-    accrual_month: str,
-    org_account_id: int,
-    currency_id: int,
-):
-    """
-    Создать *доход* (type = 10) в «План денег».
-    """
-    payload = {
-        "api_key":       API_KEY,
-        "name":          name,
-        "plan_paid_date": plan_paid_date,
-        "accrual_month":  accrual_month,
-        "category_id":    category_id,   # статья ДОХОДОВ!
-        "total":          total,
-        "org_account_id": org_account_id,
-        "project_id":     project_id,
-        "currency_id":    currency_id,
-        "manager_id":     MANAGER_ID,
-        "type":           10,            # 10 = доход
-    }
-    return _post_plan_money(payload)
+# ------------------------- публичные обёртки --------------------------------
+def create_expense(**kwargs) -> Tuple[bool, Any]:
+    """Создать *расход* (type = 20)"""
+    return _create_plan_money(type_code=20, **kwargs)
+
+
+def create_income(**kwargs) -> Tuple[bool, Any]:
+    """Создать *доход* (type = 10)"""
+    return _create_plan_money(type_code=10, **kwargs)
+# ---------------------------------------------------------------------------
+
