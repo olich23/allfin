@@ -1,92 +1,93 @@
-import requests
+import requests, asyncio
 
-API_KEY = "WFhISk9wZVBPamVmd3U2TTVaR0ZLQW9uTk90WWJIeTdfMTAxNTc3"
-BASE_URL = "https://pirus.aspro.cloud/api/v1/module/st"
+API_KEY   = "WFhISk9wZVBPamVmd3U2TTVaR0ZLQW9uTk90WWJIeTdfMTAxNTc3"
 
-projects_list = []
-expense_categories_list = []
-income_categories_list = []
+# разные модули в REST-пути
+BASE_ST  = "https://pirus.aspro.cloud/api/v1/module/st"   # проекты
+BASE_FIN = "https://pirus.aspro.cloud/api/v1/module/fin"  # финансы (статьи)
 
-# Функция для загрузки проектов из Aspro
-async def load_projects():
-    global projects_list
-    url = f"{BASE_URL}/projects/list?api_key={API_KEY}"
-    response = requests.get(url)
-    print(f"Ответ сервера по проектам: {response.text}")
-    if response.status_code == 200:
+projects_list         : list[dict] = []
+expense_categories_list: list[dict] = []
+income_categories_list : list[dict] = []
+
+
+# ------------ util ---------------
+def _get(url: str) -> list[dict]:
+    """Общий геттер: вернёт items [] либо [] при ошибке, выведет debug."""
+    resp = requests.get(url)
+    print("DEBUG →", url, "→", resp.text[:120])
+    if resp.ok:
         try:
-            data = response.json()
-            projects_list = data.get("response", {}).get("items", [])
-            print(f"Загруженные проекты: {', '.join([p['name'] for p in projects_list])}")
+            return resp.json().get("response", {}).get("items", [])
         except Exception as e:
-            print(f"Ошибка при обработке данных о проектах: {e}")
-    else:
-        print(f"Ошибка при получении проектов: {response.status_code} {response.text}")
+            print("Ошибка обработки JSON:", e)
+    return []
+
+
+# ---------- загрузка справочников ----------
+async def load_projects() -> list[dict]:
+    global projects_list
+    projects_list = _get(f"{BASE_ST}/projects/list?api_key={API_KEY}")
+    print("Загруженные проекты:",
+          ", ".join(p["name"] for p in projects_list) or "—")
     return projects_list
 
-# Функция для загрузки статей расходов
-async def load_expense_categories():
+
+async def load_expense_categories() -> list[dict]:
     global expense_categories_list
-    url = f"{BASE_URL}/outcome_categories/list?api_key={API_KEY}"
-    response = requests.get(url)
-    print(f"Ответ сервера по статьям расходов: {response.text}")
-    if response.status_code == 200:
-        try:
-            data = response.json()
-            expense_categories_list = data.get("response", {}).get("items", [])
-            print(f"Загруженные статьи расходов: {', '.join([c['name'] for c in expense_categories_list])}")
-        except Exception as e:
-            print(f"Ошибка при обработке статей расходов: {e}")
-    else:
-        print(f"Ошибка при получении статей расходов: {response.status_code} {response.text}")
+    expense_categories_list = _get(
+        f"{BASE_FIN}/outcome_categories/list?api_key={API_KEY}"
+    )
+    print("Загруженные статьи расходов:",
+          ", ".join(c["name"] for c in expense_categories_list) or "—")
     return expense_categories_list
 
-# Функция для загрузки статей доходов
-async def load_income_categories():
+
+async def load_income_categories() -> list[dict]:
     global income_categories_list
-    url = f"{BASE_URL}/income_categories/list?api_key={API_KEY}"
-    response = requests.get(url)
-    print(f"Ответ сервера по статьям доходов: {response.text}")
-    if response.status_code == 200:
-        try:
-            data = response.json()
-            income_categories_list = data.get("response", {}).get("items", [])
-            print(f"Загруженные статьи доходов: {', '.join([c['name'] for c in income_categories_list])}")
-        except Exception as e:
-            print(f"Ошибка при обработке статей доходов: {e}")
-    else:
-        print(f"Ошибка при получении статей доходов: {response.status_code} {response.text}")
+    income_categories_list = _get(
+        f"{BASE_FIN}/income_categories/list?api_key={API_KEY}"
+    )
+    print("Загруженные статьи доходов:",
+          ", ".join(c["name"] for c in income_categories_list) or "—")
     return income_categories_list
 
-# Функция поиска project_id по названию проекта
-async def find_project_id(projects, project_name):
-    if not project_name:
+
+# ------------- поиск ID -------------
+def _find_id(items: list[dict], name: str) -> int | None:
+    if not name:
         return None
-    project_name = project_name.lower().strip()
-    for project in projects:
-        name_in_list = project.get("name", "").lower().strip()
-        if project_name in name_in_list or name_in_list in project_name:
-            return project.get("id")
+    name = name.lower().strip()
+    for it in items:
+        val = it.get("name", "").lower().strip()
+        if name in val or val in name:
+            return it.get("id")
     return None
 
-# Функция поиска category_id по названию категории расходов
-async def find_expense_category_id(categories, category_name):
-    if not category_name:
-        return None
-    category_name = category_name.lower().strip()
-    for category in categories:
-        name_in_list = category.get("name", "").lower().strip()
-        if category_name in name_in_list or name_in_list in category_name:
-            return category.get("id")
-    return None
 
-# Функция поиска category_id по названию категории доходов
-async def find_income_category_id(categories, category_name):
-    if not category_name:
-        return None
-    category_name = category_name.lower().strip()
-    for category in categories:
-        name_in_list = category.get("name", "").lower().strip()
-        if category_name in name_in_list or name_in_list in category_name:
-            return category.get("id")
-    return None
+def find_project_id(projects: list[dict], project_name: str) -> int | None:
+    return _find_id(projects, project_name)
+
+
+def find_expense_category_id(cats: list[dict], cat_name: str) -> int | None:
+    return _find_id(cats, cat_name)
+
+
+def find_income_category_id(cats: list[dict], cat_name: str) -> int | None:
+    return _find_id(cats, cat_name)
+
+
+# ------------ быстрый самотест -------------
+if __name__ == "__main__":
+    async def _test():
+        await asyncio.gather(
+            load_projects(),
+            load_expense_categories(),
+            load_income_categories()
+        )
+        print(
+            "Всего:", len(projects_list), "проектов |",
+            len(expense_categories_list), "расходных |",
+            len(income_categories_list), "доходных"
+        )
+    asyncio.run(_test())
