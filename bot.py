@@ -12,17 +12,22 @@ from aspro_reference import (
 )
 from rapidfuzz import process
 import datetime
+import asyncio
 
 BOT_TOKEN = "7769240179:AAHPT10IML3CezoYu71h3sbYmaXsxL9MMPU"
 
-async def load_references():
-    projects = await load_projects()
-    expense_cats = await load_expense_categories()
-    income_cats = await load_income_categories()
+
+# ---------- справочники ----------
+async def load_references() -> tuple[list, list, list]:
+    projects      = await load_projects()
+    expense_cats  = await load_expense_categories()
+    income_cats   = await load_income_categories()
     return projects, expense_cats, income_cats
 
+
+# ---------- обработка входящих сообщений ----------
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text
+    text   = update.message.text
     parsed = await parse_finance_message(text)
 
     # Ошибка парсинга
@@ -30,52 +35,49 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(parsed["error"])
         return
 
-    rec_type = parsed.get("type")  # "expense" или "income"
+    rec_type     = parsed["type"]           # "expense" | "income"
     project_name = parsed["project_name"]
-    cat_name = parsed["category_name"]
-    total = parsed["total"]
+    cat_name     = parsed["category_name"]
+    total        = parsed["total"]
 
-    # Поиск проекта
-    project_id = await find_project_id(context.bot_data['projects'], project_name)
+    # ---- проект ----
+    project_id = find_project_id(context.bot_data["projects"], project_name)
     if not project_id:
-        suggestions = suggest_similar_projects(context.bot_data['projects'], project_name)
-        if suggestions:
-            await update.message.reply_text(
-                f"Проект '{project_name}' не найден. Возможно, вы имели в виду: {', '.join(suggestions)}"
-            )
-        else:
-            await update.message.reply_text(f"Проект '{project_name}' не найден в системе.")
+        suggestions = suggest_similar_projects(context.bot_data["projects"], project_name)
+        msg = (
+            f"Проект «{project_name}» не найден."
+            + (f" Возможно, вы имели в виду: {', '.join(suggestions)}" if suggestions else "")
+        )
+        await update.message.reply_text(msg)
         return
 
-    # Поиск категории
+    # ---- категория ----
     if rec_type == "expense":
-        cat_id = await find_expense_category_id(context.bot_data['expense_categories'], cat_name)
+        cat_id = find_expense_category_id(context.bot_data["expense_categories"], cat_name)
+        label  = "статья расходов"
+        cats   = context.bot_data["expense_categories"]
     else:
-        cat_id = await find_income_category_id(context.bot_data['income_categories'], cat_name)
+        cat_id = find_income_category_id(context.bot_data["income_categories"], cat_name)
+        label  = "статья доходов"
+        cats   = context.bot_data["income_categories"]
 
     if not cat_id:
-        if rec_type == "expense":
-            suggestions = suggest_similar_categories(context.bot_data['expense_categories'], cat_name)
-            label = "статья расходов"
-        else:
-            suggestions = suggest_similar_categories(context.bot_data['income_categories'], cat_name)
-            label = "статья доходов"
-        if suggestions:
-            await update.message.reply_text(
-                f"{label.title()} '{cat_name}' не найдена. Возможно, вы имели в виду: {', '.join(suggestions)}"
-            )
-        else:
-            await update.message.reply_text(f"{label.title()} '{cat_name}' не найдена в системе.")
+        suggestions = suggest_similar_categories(cats, cat_name)
+        msg = (
+            f"{label.title()} «{cat_name}» не найдена."
+            + (f" Возможно, вы имели в виду: {', '.join(suggestions)}" if suggestions else "")
+        )
+        await update.message.reply_text(msg)
         return
 
-    # Параметры для API
-    name = f"{cat_name} для {project_name}"
+    # ---- параметры записи ----
+    name           = f"{cat_name} для {project_name}"
     plan_paid_date = parsed.get("plan_paid_date", datetime.date.today().strftime("%Y-%m-%d"))
-    accrual_month = parsed.get("accrual_month", datetime.date.today().strftime("%Y-%m"))
+    accrual_month  = parsed.get("accrual_month",  datetime.date.today().strftime("%Y-%m"))
     org_account_id = 20
-    currency_id = 99
+    currency_id    = 99
 
-    # Создание записи в Aspro
+    # ---- вызов API ----
     if rec_type == "expense":
         result = create_expense(
             name=name,
@@ -99,42 +101,59 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             currency_id=currency_id,
         )
 
-    await update.message.reply_text(f"Ответ от Aspro: {result}")
+    await update.message.reply_text(f"Ответ от Aspro:\n{result}")
 
-# Подсказки для названий
 
+# ---------- подсказки ----------
 def suggest_similar_projects(list_, query, max_suggestions=5):
-    names = [p["name"] for p in list_]
+    names   = [p["name"] for p in list_]
     matches = process.extract(query, names, limit=max_suggestions, score_cutoff=50)
     return [m[0] for m in matches]
 
-# Используем для обеих категорий
 
 def suggest_similar_categories(list_, query, max_suggestions=5):
-    names = [c["name"] for c in list_]
+    names   = [c["name"] for c in list_]
     matches = process.extract(query, names, limit=max_suggestions, score_cutoff=50)
     return [m[0] for m in matches]
 
+
+# ---------- запуск ----------
 if __name__ == "__main__":
-    import asyncio
-
     async def main():
-        app = ApplicationBuilder().token(BOT_TOKEN).build()
+        # загружаем справочники
+        projects, expense_cats, income_cats = await load_references()
 
-        projects, expense_categories, income_categories = await load_references()
-        app.bot_data['projects'] = projects
-        app.bot_data['expense_categories'] = expense_categories
-        app.bot_data['income_categories'] = income_categories
+        # инициализируем бота
+        app = (
+            ApplicationBuilder()
+            .token(BOT_TOKEN)
+            .build()
+        )
+
+        # сохраняем справочники в контексте
+        app.bot_data["projects"]           = projects
+        app.bot_data["expense_categories"] = expense_cats
+        app.bot_data["income_categories"]  = income_cats
 
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
+        # выводим содержимое справочников
         print("Загруженные проекты:")
         for p in projects:
             print(f"- {p['id']}: {p['name']}")
-
-        print("Загруженные статьи расходов:", [c['name'] for c in expense_categories])
-        print("Загруженные статьи доходов:", [c['name'] for c in income_categories])
+        print("Загруженные статьи расходов:", [c["name"] for c in expense_cats])
+        print("Загруженные статьи доходов:", [c["name"] for c in income_cats])
 
         await app.run_polling()
 
-    asyncio.run(main())
+    # в некоторых окружениях asyncio.run может конфликтовать с уже
+    # запущенным циклом – защитимся try/except.
+    try:
+        asyncio.run(main())
+    except RuntimeError as e:
+        if "already running" in str(e):
+            # если цикл уже запущен (например, Jupyter) – используем create_task
+            loop = asyncio.get_running_loop()
+            loop.create_task(main())
+        else:
+            raise
